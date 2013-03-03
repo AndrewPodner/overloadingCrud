@@ -12,6 +12,8 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Things to Know
+> NOTE: This class is not designed as production code, it is merely an illustrative example of what can be done with overloading.  I have not put in any thing to filter input or escape output.  Additionally, it has only been tested with the most basic examples, it is not guaranteed to be bug free. If you have a suggestion for improvement, feel free to send a PR, or log an issue on Github.
+
 * Database Tables must be lowercase, underscore spaced (e.g. `some_table`)
 * Database Fields must be lowercase, underscore spaces (e.g. `some_field`)
 * Method Names must be set up in camelCase as follows:
