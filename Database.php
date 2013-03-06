@@ -38,7 +38,7 @@ class Database
     protected function escape($str)
     {
         if (is_array($str)) {
-          return array_map(array($this, 'escape'), $str;
+          return array_map(array($this, 'escape'), $str);
         } elseif (is_string($str)) {
           return "'". $this->db->real_escape_string($str). "'";
         }
@@ -161,7 +161,7 @@ class Database
     {
         $arrSet = [];
         foreach ($set as $field => $value) {
-            $arrSet[] = $field . "= ".$this->escape($value);
+            $arrSet[] = $field . "= ". $this->escape($value);
         }
 
         $this->db->query(
@@ -196,10 +196,9 @@ class Database
      */
     protected function insert($tableName, array $arrData)
     {
-        $arrValues = array_map(array($this, 'escape'), array_values($arrData));
         $this->db->query(
             "INSERT INTO $tableName (".implode(',', array_keys($arrData)).")
-            VALUES (".implode(',', $arrValues).")"
+            VALUES (".implode(',', $this->escape(array_values($arrData))).")"
         );
         return $this->db->affected_rows;
     }
