@@ -99,14 +99,14 @@ class Database
             // Delete
             case 'del':
                 list($tableName, $fieldName) = explode('By', preg_replace('/^delete/', '', $function), 2);
-                if (count($arr) != 2) {
+                if (! isset($tableName, $fieldName)) {
                     throw BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->delete(
                      $this->camelCaseToUnderscore($tableName), 
-                    array($this->camelCaseToUnderscore($fieldName) => $params[0]))
-                );
-                break;
+                     array($this->camelCaseToUnderscore($fieldName) => $params[0]))
+               );
+               break;
 
             // Insert
             case 'ins':
@@ -115,7 +115,8 @@ class Database
                     $params[0]
                 );
                 break;
-               
+            
+            // Unknown Method
             default:
                throw BadMethodCallException($function.' is an Invalid Method Call');
                break;
