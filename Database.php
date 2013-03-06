@@ -50,7 +50,10 @@ class Database
             // Record Retrieval
             case 'get':
                 $string = str_replace('get', '', $function);
-                $arr = explode('By', $string);
+                $arr = explode('By', $string, 2);
+                if (count($arr) != 2) {
+                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                }
                 return $this->get(
                     $this->camelCaseToUnderscore($arr[0]), 
                     array($this->camelCaseToUnderscore($arr[1]) => $arrParams[0])
@@ -60,7 +63,10 @@ class Database
             // Update
             case 'upd':
                 $string = str_replace('update', '', $function);
-                $arr = explode('By', $string);
+                $arr = explode('By', $string, 2);
+                if (count($arr) != 2) {
+                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                }
                 return $this->update(
                     $this->camelCaseToUnderscore($arr[0]), 
                     $arrParams[1], 
@@ -71,7 +77,10 @@ class Database
             // Delete
             case 'del':
                 $string = str_replace('delete', '', $function);
-                $arr = explode('By', $string);
+                $arr = explode('By', $string, 2);
+                if (count($arr) != 2) {
+                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                }
                 return $this->delete(
                     $this->camelCaseToUnderscore($arr[0]),
                     [$this->camelCaseToUnderscore($arr[1]) => $arrParams[0])]
@@ -83,6 +92,10 @@ class Database
                 $string = str_replace('insert', '', $function);
                 return $this->insert($this->camelCaseToUnderscore($string), $arrParams[0]);
                 break;
+               
+            default:
+               throw \BadMethodCallException($function.' is an Invalid Method Call');
+               break;
         }
     }
 
