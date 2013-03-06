@@ -9,9 +9,6 @@
  * @license    MIT <http://opensource.org/licenses/MIT>
  */
  
-namespace Crud;
- 
- 
 class Database
 {
 
@@ -24,7 +21,7 @@ class Database
     /**
      * Connect to the database
      */
-    public function __construct(\Mysqli $dbh)
+    public function __construct(Mysqli $dbh)
     {
         $this->db = $dbh;
     }
@@ -42,6 +39,18 @@ class Database
         } elseif (is_string($str)) {
           return "'". $this->db->real_escape_string($str). "'";
         }
+    }
+    
+    /**
+     * Changes a camelCase table or field name to lowercase,
+     * underscore spaced name
+     *
+     * @param string $string camelCase string
+     * @return string underscore_space string
+     */
+    protected function camelCaseToUnderscore($string)
+    {
+        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $string));
     }
 
     /**
@@ -66,7 +75,7 @@ class Database
             case 'get':
                 list($tableName, $fieldName) = explode('By', preg_replace('/^get/', '', $function), 2);
                 if (! isset($tableName, $fieldName)) {
-                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                    throw BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->get(
                     $this->camelCaseToUnderscore($tableName), 
@@ -78,7 +87,7 @@ class Database
             case 'upd':
                 list($tableName, $fieldName) = explode('By', preg_replace('/^update/', '', $function), 2);
                 if (! isset($tableName, $fieldName)) {
-                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                    throw BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->update(
                     $this->camelCaseToUnderscore($tableName), 
@@ -91,7 +100,7 @@ class Database
             case 'del':
                 list($tableName, $fieldName) = explode('By', preg_replace('/^delete/', '', $function), 2);
                 if (count($arr) != 2) {
-                    throw \BadMethodCallException($function.' is an Invalid Method Call');
+                    throw BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->delete(
                      $this->camelCaseToUnderscore($tableName), 
@@ -108,21 +117,9 @@ class Database
                 break;
                
             default:
-               throw \BadMethodCallException($function.' is an Invalid Method Call');
+               throw BadMethodCallException($function.' is an Invalid Method Call');
                break;
         }
-    }
-
-    /**
-     * Changes a camelCase table or field name to lowercase,
-     * underscore spaced name
-     *
-     * @param string $string camelCase string
-     * @return string underscore_space string
-     */
-    protected function camelCaseToUnderscore($string)
-    {
-        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $string));
     }
 
     /**
@@ -138,7 +135,7 @@ class Database
             "SELECT * FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
         );
         if (! $res) {
-          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+          throw RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
         }
         if ($res->num_rows == 1) {
             return $res->fetch_assoc();
@@ -171,7 +168,7 @@ class Database
             WHERE ".key($where). ' = '. $this->escape(current($where));
         );
         if (! $res) {
-          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+          throw RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
         }
         return $this->db->affected_rows;
     }
@@ -190,7 +187,7 @@ class Database
             "DELETE FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
         );
         if (! $res) {
-          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+          throw RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
         }
         return $this->db->affected_rows;
     }
@@ -209,7 +206,7 @@ class Database
             VALUES (".implode(',', $this->escape(array_values($data))).")"
         );
         if (! $res) {
-          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+          throw RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
         }
         return $this->db->affected_rows;
     }
