@@ -47,39 +47,49 @@ class Database
             case 'get':
                 $string = str_replace('get', '', $function);
                 $arr = explode('By', $string);
-                $tableName = $this->camelCaseToUnderscore($arr[0]);
-                $fieldName = $this->camelCaseToUnderscore($arr[1]);
-                $where[$fieldName] = $arrParams[0];
-                return $this->get($tableName, $where);
+                return $this->get(
+                    $this->camelCaseToUnderscore($arr[0]), 
+                    array(
+                        $this->camelCaseToUnderscore($arr[1]) => 
+                        $this->db->real_escape_string($arrParams[0])
+                    )
+                );
                 break;
 
             // Update
             case 'upd':
                 $string = str_replace('update', '', $function);
                 $arr = explode('By', $string);
-                $tableName = $this->camelCaseToUnderscore($arr[0]);
-                $fieldName = $this->camelCaseToUnderscore($arr[1]);
-                $where[$fieldName] = $arrParams[0];
-                $set = $arrParams[1];
-                return $this->update($tableName, $set, $where);
+                return $this->update(
+                    $this->camelCaseToUnderscore($arr[0]), 
+                    array_map(array($this->db, 'real_escape_string'), $arrParams[1]), 
+                    array(
+                        $this->camelCaseToUnderscore($arr[1]) =>
+                        $this->db->real_escape_string($arrParams[0])
+                    )
+                );
                 break;
 
             // Delete
             case 'del':
                 $string = str_replace('delete', '', $function);
                 $arr = explode('By', $string);
-                $tableName = $this->camelCaseToUnderscore($arr[0]);
-                $fieldName = $this->camelCaseToUnderscore($arr[1]);
-                $where[$fieldName] = $arrParams[0];
-                return $this->delete($tableName, $where);
+                return $this->delete(
+                    $this->camelCaseToUnderscore($arr[0]),
+                    array(
+                        $this->camelCaseToUnderscore($arr[1]) =>
+                        $this->db->real_escape_string($arrParams[0]);
+                    )
+                );
                 break;
 
             // Insert
             case 'ins':
                 $string = str_replace('insert', '', $function);
-                $tableName = $this->camelCaseToUnderscore($string);
-                $arrInsert = $arrParams[0];
-                return $this->insert($tableName, $arrInsert);
+                return $this->insert(
+                    $this->camelCaseToUnderscore($string), 
+                    array_map(array($this->db, 'real_escape_string'), $arrParams[0])
+                );
                 break;
         }
     }
@@ -105,27 +115,18 @@ class Database
      */
     protected function get($tableName, $where)
     {
-        $field = key($where);
-        $value = $this->db->real_escape_string($where[$field]);
-
-        $sql = "SELECT * FROM $tableName WHERE $field = '$value'";
-        $rs = $this->db->query($sql);
-
-        // If it is a single record, return an associative array
+        $rs = $this->db->query(
+            "SELECT * FROM $tableName WHERE ".key($where)." = '".current($where)."'"
+        );
         if ($rs->num_rows == 1) {
             return $rs->fetch_assoc();
-
-            // If there are multiple records, build an array of associative arrays
         } elseif ($rs->num_rows > 1) {
             while ($row = $rs->fetch_assoc()) {
                 $output[] = $row;
             }
             return $output;
-
-            // If there are no records, return false
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -138,16 +139,14 @@ class Database
      */
     protected function update($tableName, $set, $where)
     {
-        $field = key($where);
-        $value = $this->db->real_escape_String($where[$field]);
-
-        foreach ($set as $fld => $val) {
-            $arrSet[] = $fld . "= '".$this->db->real_escape_String($val)."'";
+        foreach ($set as $filed => $value) {
+            $arrSet[] = $field . "= '$value'";
         }
 
-        $setStmt = implode(',', $arrSet);
-        $sql = "UPDATE $tableName SET $setStmt WHERE $field = '$value'";
-        $query = $this->db->query($sql);
+        $this->db->query(
+            "UPDATE $tableName SET ".implode(',', $arrSet)." 
+            WHERE ".key($where)." = '".current($where)."'"
+        );
         return $this->db->affected_rows;
     }
 
@@ -160,11 +159,9 @@ class Database
      */
     protected function delete($tableName, $where)
     {
-        $field = key($where);
-        $value = $this->db->real_escape_String($where[$field]);
-
-        $sql = "DELETE FROM $tableName WHERE $field = '$value'";
-        $query = $this->db->query($sql);
+        $this->db->query(
+            "DELETE FROM $tableName WHERE ".key($where)." = '".current($where)."'"
+        );
         return $this->db->affected_rows;
     }
 
@@ -177,14 +174,17 @@ class Database
      */
     protected function insert($tableName, $arrData)
     {
-        foreach ($arrData as $fieldName => $value) {
-            $arrFields[] = $fieldName;
-            $arrValues[] = "'" . $this->db->real_escape_String($value) . "'";
-        }
-        $fieldString = implode(',', $arrFields);
-        $valueString = implode(',', $arrValues);
-        $sql = "INSERT INTO $tableName ($fieldString) VALUES ($valueString)";
-        $result = $this->db->query($sql);
+        $arrValues = array_map(
+            function($value){ 
+                return "'".$value."'"; 
+            }, 
+            array_values($arrData)
+        );
+
+        $this->db->query(
+            "INSERT INTO $tableName (".implode(',', array_keys($arrData)).") 
+            VALUES (".implode(',', $arrValues).")"
+        );
         return $this->db->affected_rows;
     }
 }
