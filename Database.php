@@ -27,6 +27,14 @@ class Database
     }
 
     /**
+     * Return the \mysqli connection
+     */
+    public function getMysqli()
+    {
+        return $this->db;
+    }
+
+    /**
      * Enable variable escaping according to Mysqli
      * 
      * @param mixed $str string|array to be mysqli escaped
