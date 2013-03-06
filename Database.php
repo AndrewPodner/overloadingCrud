@@ -30,6 +30,21 @@ class Database
     }
 
     /**
+     * Enable variable escaping according to Mysqli
+     * 
+     * @param mixed $str string|array to be mysqli escaped
+     * @return string|array 
+     */
+    protected function escape($str)
+    {
+        if (is_array($str)) {
+          return array_map(array($this, 'escape'), $str;
+        } elseif (is_string($str)) {
+          return "'". $this->db->real_escape_string($str). "'";
+        }
+    }
+
+    /**
      * handler for dynamic CRUD methods
      *
      * Format for dynamic methods names -
@@ -121,8 +136,7 @@ class Database
     protected function get($tableName, array $where)
     {
         $rs = $this->db->query(
-            "SELECT * FROM $tableName WHERE 
-            ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
+            "SELECT * FROM $tableName WHERE ".key($where)." = ".$this->escape(current($where));
         );
         if ($rs->num_rows == 1) {
             return $rs->fetch_assoc();
@@ -147,15 +161,16 @@ class Database
     {
         $arrSet = [];
         foreach ($set as $field => $value) {
-            $arrSet[] = $field . "= '". $this->db->real_escape_string($value)."'";
+            $arrSet[] = $field . "= ".$this->escape($value);
         }
 
         $this->db->query(
             "UPDATE $tableName SET ".implode(',', $arrSet)." 
-            WHERE ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
+            WHERE ".key($where)." = ".$this->escape(current($where));
         );
         return $this->db->affected_rows;
     }
+
 
     /**
      * Delete Method
@@ -167,8 +182,7 @@ class Database
     protected function delete($tableName, array $where)
     {
         $this->db->query(
-            "DELETE FROM $tableName 
-            WHERE ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
+            "DELETE FROM $tableName WHERE ".key($where)." = '".$this->escape(current($where));
         );
         return $this->db->affected_rows;
     }
@@ -182,13 +196,7 @@ class Database
      */
     protected function insert($tableName, array $arrData)
     {
-        $arrValues = array_map(
-            function($value) use ($this->db) { 
-                return "'".$this->db->real_escape_string($value)."'"; 
-            }, 
-            array_values($arrData)
-        );
-
+        $arrValues = array_map(array($this, 'escape'), array_values($arrData));
         $this->db->query(
             "INSERT INTO $tableName (".implode(',', array_keys($arrData)).")
             VALUES (".implode(',', $arrValues).")"
