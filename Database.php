@@ -8,6 +8,10 @@
  * @copyright  2013
  * @license    MIT <http://opensource.org/licenses/MIT>
  */
+ 
+namespace Crud;
+ 
+ 
 class Database
 {
 
@@ -20,7 +24,7 @@ class Database
     /**
      * Connect to the database
      */
-    public function __construct(Mysqli $dbh)
+    public function __construct(\Mysqli $dbh)
     {
         $this->db = $dbh;
     }
@@ -38,7 +42,7 @@ class Database
      * @param array $arrParams
      * @return array|bool
      */
-    public function __call($function, $arrParams)
+    public function __call($function, array $arrParams = [])
     {
 
         $action = substr($function, 0, 3);
@@ -49,10 +53,7 @@ class Database
                 $arr = explode('By', $string);
                 return $this->get(
                     $this->camelCaseToUnderscore($arr[0]), 
-                    array(
-                        $this->camelCaseToUnderscore($arr[1]) => 
-                        $this->db->real_escape_string($arrParams[0])
-                    )
+                    array($this->camelCaseToUnderscore($arr[1]) => $arrParams[0])
                 );
                 break;
 
@@ -62,11 +63,8 @@ class Database
                 $arr = explode('By', $string);
                 return $this->update(
                     $this->camelCaseToUnderscore($arr[0]), 
-                    array_map(array($this->db, 'real_escape_string'), $arrParams[1]), 
-                    array(
-                        $this->camelCaseToUnderscore($arr[1]) =>
-                        $this->db->real_escape_string($arrParams[0])
-                    )
+                    $arrParams[1], 
+                    [$this->camelCaseToUnderscore($arr[1]) => $arrParams[0]]
                 );
                 break;
 
@@ -76,20 +74,14 @@ class Database
                 $arr = explode('By', $string);
                 return $this->delete(
                     $this->camelCaseToUnderscore($arr[0]),
-                    array(
-                        $this->camelCaseToUnderscore($arr[1]) =>
-                        $this->db->real_escape_string($arrParams[0]);
-                    )
+                    [$this->camelCaseToUnderscore($arr[1]) => $arrParams[0])]
                 );
                 break;
 
             // Insert
             case 'ins':
                 $string = str_replace('insert', '', $function);
-                return $this->insert(
-                    $this->camelCaseToUnderscore($string), 
-                    array_map(array($this->db, 'real_escape_string'), $arrParams[0])
-                );
+                return $this->insert($this->camelCaseToUnderscore($string), $arrParams[0]);
                 break;
         }
     }
@@ -113,10 +105,11 @@ class Database
      * @param array $where (key is field name)
      * @return array|bool (associative array for single records, multidim array for multiple records)
      */
-    protected function get($tableName, $where)
+    protected function get($tableName, array $where)
     {
         $rs = $this->db->query(
-            "SELECT * FROM $tableName WHERE ".key($where)." = '".current($where)."'"
+            "SELECT * FROM $tableName WHERE 
+            ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
         );
         if ($rs->num_rows == 1) {
             return $rs->fetch_assoc();
@@ -137,15 +130,16 @@ class Database
      * @param array $where (associative where key is field name)
      * @return int number of affected rows
      */
-    protected function update($tableName, $set, $where)
+    protected function update($tableName, array $set, array $where)
     {
-        foreach ($set as $filed => $value) {
-            $arrSet[] = $field . "= '$value'";
+        $arrSet = [];
+        foreach ($set as $field => $value) {
+            $arrSet[] = $field . "= '". $this->db->real_escape_string($value)."'";
         }
 
         $this->db->query(
             "UPDATE $tableName SET ".implode(',', $arrSet)." 
-            WHERE ".key($where)." = '".current($where)."'"
+            WHERE ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
         );
         return $this->db->affected_rows;
     }
@@ -157,10 +151,11 @@ class Database
      * @param array $where (associative where key is field name)
      * @return int number of affected rows
      */
-    protected function delete($tableName, $where)
+    protected function delete($tableName, array $where)
     {
         $this->db->query(
-            "DELETE FROM $tableName WHERE ".key($where)." = '".current($where)."'"
+            "DELETE FROM $tableName 
+            WHERE ".key($where)." = '".$this->db->real_escape_string(current($where))."'"
         );
         return $this->db->affected_rows;
     }
@@ -172,17 +167,17 @@ class Database
      * @param array $arrData (data to insert, associative where key is field name)
      * @return int number of affected rows
      */
-    protected function insert($tableName, $arrData)
+    protected function insert($tableName, array $arrData)
     {
         $arrValues = array_map(
-            function($value){ 
-                return "'".$value."'"; 
+            function($value) use ($this->db) { 
+                return "'".$this->db->real_escape_string($value)."'"; 
             }, 
             array_values($arrData)
         );
 
         $this->db->query(
-            "INSERT INTO $tableName (".implode(',', array_keys($arrData)).") 
+            "INSERT INTO $tableName (".implode(',', array_keys($arrData)).")
             VALUES (".implode(',', $arrValues).")"
         );
         return $this->db->affected_rows;
