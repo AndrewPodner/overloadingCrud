@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="overloading CRUD"
+         default="pre-check"
+         basedir="./"
+         description="Lithium Test Environment">
+
+    <fileset id="sourcecode" dir="./">
+        <include name="**/*.php" />
+    </fileset>
+
+    <target name="pre-check">
+
+        <echo msg="Looking for broken files..." />
+
+        <phplint level="verbose" haltonfailure="true">
+            <fileset refid="sourcecode"/>
+        </phplint>
+
+        <echo msg="Copy-Paste Detector Check Beginning..." />
+        <phpcpd>
+            <fileset refid="sourcecode"/>
+        </phpcpd>
+
+    </target>
+
+</project>

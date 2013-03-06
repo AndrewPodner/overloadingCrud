@@ -99,3 +99,6 @@ $result = $db->deleteCustomersById(5);
 // returns 1 (number of affected rows)
 
 ```
+
+## Change Log
+* 3/6/13 [nyamsprod] : Make the code more robust, adding dependency injection & sql injection prevention
