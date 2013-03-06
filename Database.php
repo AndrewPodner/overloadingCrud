@@ -57,45 +57,45 @@ class Database
      * @param array $arrParams
      * @return array|bool
      */
-    public function __call($function, array $params = [])
+    public function __call($function, array $params = array())
     {
 
         $action = substr($function, 0, 3);
         switch ($action) {
             // Record Retrieval
             case 'get':
-                $arr = explode('By', preg_replace('/^get/', '', $function), 2);
-                if (count($arr) != 2) {
+                list($tableName, $fieldName) = explode('By', preg_replace('/^get/', '', $function), 2);
+                if (! isset($tableName, $fieldName)) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->get(
-                    $this->camelCaseToUnderscore($arr[0]), 
-                    array($this->camelCaseToUnderscore($arr[1]) => $params[0])
+                    $this->camelCaseToUnderscore($tableName), 
+                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
                 );
                 break;
 
             // Update
             case 'upd':
-                $arr = explode('By', preg_replace('/^update/', '', $function), 2);
-                if (count($arr) != 2) {
+                list($tableName, $fieldName) = explode('By', preg_replace('/^update/', '', $function), 2);
+                if (! isset($tableName, $fieldName)) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->update(
-                    $this->camelCaseToUnderscore($arr[0]), 
+                    $this->camelCaseToUnderscore($tableName), 
                     $params[1], 
-                    array($this->camelCaseToUnderscore($arr[1]) => $params[0])
+                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
                 );
                 break;
 
             // Delete
             case 'del':
-                $arr = explode('By', preg_replace('/^delete/', '', $function), 2);
+                list($tableName, $fieldName) = explode('By', preg_replace('/^delete/', '', $function), 2);
                 if (count($arr) != 2) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->delete(
-                    $this->camelCaseToUnderscore($arr[0]),
-                    array($this->camelCaseToUnderscore($arr[1]) => $params[0]))
+                     $this->camelCaseToUnderscore($tableName), 
+                    array($this->camelCaseToUnderscore($fieldName) => $params[0]))
                 );
                 break;
 
@@ -202,11 +202,11 @@ class Database
      * @param array $arrData (data to insert, associative where key is field name)
      * @return int number of affected rows
      */
-    protected function insert($tableName, array $arrData)
+    protected function insert($tableName, array $data)
     {
         $res = $this->db->query(
-            "INSERT INTO $tableName (".implode(',', array_keys($arrData)).")
-            VALUES (".implode(',', $this->escape(array_values($arrData))).")"
+            "INSERT INTO $tableName (".implode(',', array_keys($data)).")
+            VALUES (".implode(',', $this->escape(array_values($data))).")"
         );
         if (! $res) {
           throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
