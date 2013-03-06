@@ -20,9 +20,9 @@ class Database
     /**
      * Connect to the database
      */
-    public function __construct()
+    public function __construct(Mysqli $dbh)
     {
-        $this->db = new mysqli('hostname', 'user', 'password', 'database_name');
+        $this->db = $dbh;
     }
 
     /**
@@ -106,9 +106,9 @@ class Database
     protected function get($tableName, $where)
     {
         $field = key($where);
-        $value = $where[$field];
+        $value = $this->db->real_escape_string($where[$field]);
 
-        $sql = "select * from $tableName where $field = '$value'";
+        $sql = "SELECT * FROM $tableName WHERE $field = '$value'";
         $rs = $this->db->query($sql);
 
         // If it is a single record, return an associative array
@@ -139,14 +139,14 @@ class Database
     protected function update($tableName, $set, $where)
     {
         $field = key($where);
-        $value = $where[$field];
+        $value = $this->db->real_escape_String($where[$field]);
 
         foreach ($set as $fld => $val) {
-            $arrSet[] = $fld . "= '$val'";
+            $arrSet[] = $fld . "= '".$this->db->real_escape_String($val)."'";
         }
 
         $setStmt = implode(',', $arrSet);
-        $sql = "update $tableName set $setStmt where $field = '$value'";
+        $sql = "UPDATE $tableName SET $setStmt WHERE $field = '$value'";
         $query = $this->db->query($sql);
         return $this->db->affected_rows;
     }
@@ -161,9 +161,9 @@ class Database
     protected function delete($tableName, $where)
     {
         $field = key($where);
-        $value = $where[$field];
+        $value = $this->db->real_escape_String($where[$field]);
 
-        $sql = "delete from $tableName where $field = '$value'";
+        $sql = "DELETE FROM $tableName WHERE $field = '$value'";
         $query = $this->db->query($sql);
         return $this->db->affected_rows;
     }
@@ -179,11 +179,11 @@ class Database
     {
         foreach ($arrData as $fieldName => $value) {
             $arrFields[] = $fieldName;
-            $arrValues[] = "'" . $value . "'";
+            $arrValues[] = "'" . $this->db->real_escape_String($value) . "'";
         }
         $fieldString = implode(',', $arrFields);
         $valueString = implode(',', $arrValues);
-        $sql = "insert into $tableName ($fieldString) values ($valueString)";
+        $sql = "INSERT INTO $tableName ($fieldString) VALUES ($valueString)";
         $result = $this->db->query($sql);
         return $this->db->affected_rows;
     }
