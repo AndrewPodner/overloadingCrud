@@ -57,55 +57,54 @@ class Database
      * @param array $arrParams
      * @return array|bool
      */
-    public function __call($function, array $arrParams = [])
+    public function __call($function, array $params = [])
     {
 
         $action = substr($function, 0, 3);
         switch ($action) {
             // Record Retrieval
             case 'get':
-                $string = str_replace('get', '', $function);
-                $arr = explode('By', $string, 2);
+                $arr = explode('By', preg_replace('/^get/', '', $function), 2);
                 if (count($arr) != 2) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->get(
                     $this->camelCaseToUnderscore($arr[0]), 
-                    array($this->camelCaseToUnderscore($arr[1]) => $arrParams[0])
+                    array($this->camelCaseToUnderscore($arr[1]) => $params[0])
                 );
                 break;
 
             // Update
             case 'upd':
-                $string = str_replace('update', '', $function);
-                $arr = explode('By', $string, 2);
+                $arr = explode('By', preg_replace('/^update/', '', $function), 2);
                 if (count($arr) != 2) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->update(
                     $this->camelCaseToUnderscore($arr[0]), 
-                    $arrParams[1], 
-                    [$this->camelCaseToUnderscore($arr[1]) => $arrParams[0]]
+                    $params[1], 
+                    array($this->camelCaseToUnderscore($arr[1]) => $params[0])
                 );
                 break;
 
             // Delete
             case 'del':
-                $string = str_replace('delete', '', $function);
-                $arr = explode('By', $string, 2);
+                $arr = explode('By', preg_replace('/^delete/', '', $function), 2);
                 if (count($arr) != 2) {
                     throw \BadMethodCallException($function.' is an Invalid Method Call');
                 }
                 return $this->delete(
                     $this->camelCaseToUnderscore($arr[0]),
-                    [$this->camelCaseToUnderscore($arr[1]) => $arrParams[0])]
+                    array($this->camelCaseToUnderscore($arr[1]) => $params[0]))
                 );
                 break;
 
             // Insert
             case 'ins':
-                $string = str_replace('insert', '', $function);
-                return $this->insert($this->camelCaseToUnderscore($string), $arrParams[0]);
+                return $this->insert(
+                    $this->camelCaseToUnderscore(preg_replace('/^insert/', '', $function)), 
+                    $params[0]
+                );
                 break;
                
             default:
@@ -135,13 +134,16 @@ class Database
      */
     protected function get($tableName, array $where)
     {
-        $rs = $this->db->query(
-            "SELECT * FROM $tableName WHERE ".key($where)." = ".$this->escape(current($where));
+       $res = $this->db->query(
+            "SELECT * FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
         );
-        if ($rs->num_rows == 1) {
-            return $rs->fetch_assoc();
-        } elseif ($rs->num_rows > 1) {
-            while ($row = $rs->fetch_assoc()) {
+        if (! $res) {
+          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        }
+        if ($res->num_rows == 1) {
+            return $res->fetch_assoc();
+        } elseif ($res->num_rows > 1) {
+            while ($row = $res->fetch_assoc()) {
                 $output[] = $row;
             }
             return $output;
@@ -159,15 +161,18 @@ class Database
      */
     protected function update($tableName, array $set, array $where)
     {
-        $arrSet = [];
+        $arrSet = array();
         foreach ($set as $field => $value) {
-            $arrSet[] = $field . "= ". $this->escape($value);
+            $arrSet[] = $field . ' = '. $this->escape($value);
         }
 
-        $this->db->query(
+        $res = $this->db->query(
             "UPDATE $tableName SET ".implode(',', $arrSet)." 
-            WHERE ".key($where)." = ".$this->escape(current($where));
+            WHERE ".key($where). ' = '. $this->escape(current($where));
         );
+        if (! $res) {
+          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        }
         return $this->db->affected_rows;
     }
 
@@ -181,9 +186,12 @@ class Database
      */
     protected function delete($tableName, array $where)
     {
-        $this->db->query(
-            "DELETE FROM $tableName WHERE ".key($where)." = '".$this->escape(current($where));
+        $res = $this->db->query(
+            "DELETE FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
         );
+        if (! $res) {
+          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        }
         return $this->db->affected_rows;
     }
 
@@ -196,10 +204,13 @@ class Database
      */
     protected function insert($tableName, array $arrData)
     {
-        $this->db->query(
+        $res = $this->db->query(
             "INSERT INTO $tableName (".implode(',', array_keys($arrData)).")
             VALUES (".implode(',', $this->escape(array_values($arrData))).")"
         );
+        if (! $res) {
+          throw \RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        }
         return $this->db->affected_rows;
     }
 }
