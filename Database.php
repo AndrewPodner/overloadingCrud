@@ -64,7 +64,11 @@ class Database
     public function __call($function, array $params = array())
     {
         if ('lastInsertId' === $function) {
-            return $this->pdo->lastInsertId();
+            if (! isset($params[0) || !is_string($params[0])) {
+                $params[0] = null;
+            }
+
+            return $this->pdo->lastInsertId($params[0]);
         } elseif (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
             throw new \BadMethodCallException($function.' is an Invalid Method Call');
         }
