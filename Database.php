@@ -9,44 +9,31 @@
  * @license    MIT <http://opensource.org/licenses/MIT>
  */
 
+namespace Crud;
+
 class Database
 {
 
     /**
      * database connection object
-     * @var \mysqli
+     * @var \PDO
      */
-    protected $db;
+    protected $pdo;
 
     /**
      * Connect to the database
      */
-    public function __construct(Mysqli $dbh)
+    public function __construct(\PDO $pdo)
     {
-        $this->db = $dbh;
+        $this->pdo = $pdo;
     }
 
     /**
-     * Return the \mysqli connection
+     * Return the pdo connection
      */
-    public function getMysqli()
+    public function getPdo()
     {
-        return $this->db;
-    }
-
-    /**
-     * Enable variable escaping according to Mysqli
-     *
-     * @param  mixed        $str string|array to be mysqli escaped
-     * @return string|array
-     */
-    protected function escape($str)
-    {
-        if (is_array($str)) {
-          return array_map(array($this, 'escape'), $str);
-        } elseif (is_string($str)) {
-          return "'". $this->db->real_escape_string($str). "'";
-        }
+        return $this->pdo;
     }
 
     /**
@@ -77,12 +64,12 @@ class Database
     public function __call($function, array $params = array())
     {
         if (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
-            throw new BadMethodCallException($function.' is an Invalid Method Call');
+            throw new \BadMethodCallException($function.' is an Invalid Method Call');
         }
 
         if ('insert' == $matches[1]) {
             if (! is_array($params[0]) || count($params[0]) < 1) {
-                throw new InvalidArgumentException('params for insert must be an array');
+                throw new \InvalidArgumentException('params for insert must be an array');
             }
 
             return $this->insert($this->camelCaseToUnderscore($matches[2]), $params[0]);
@@ -90,12 +77,12 @@ class Database
 
         list($tableName, $fieldName) = explode('By', $matches[2], 2);
         if (! isset($tableName, $fieldName)) {
-            throw new BadMethodCallException($function.' is an Invalid Method Call');
+            throw new \BadMethodCallException($function.' is an Invalid Method Call');
         }
 
         if ('update' == $matches[1]) {
             if (! is_array($params[1]) || count($params[1]) < 1) {
-                throw new InvalidArgumentException('params for update must be an array');
+                throw new \InvalidArgumentException('params for update must be an array');
             }
 
             return $this->update(
@@ -121,23 +108,14 @@ class Database
      */
     protected function get($tableName, array $where)
     {
-        $res = $this->db->query(
-                "SELECT * FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
-                );
-        if (! $res) {
-            throw RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
-        }
-        if ($res->num_rows == 1) {
-            return $res->fetch_assoc();
-        } elseif ($res->num_rows > 1) {
-            while ($row = $res->fetch_assoc()) {
-                $output[] = $row;
-            }
-
-            return $output;
+        $stmt = $this->pdo->prepare("SELECT * FROM $tableName WHERE ".key($where) . ' = ?');
+        $stmt->execute(array_values($where));
+        $res = $stmt->fetchAll();
+        if (! $res || count($res) != 1) {
+            return $res;
         }
 
-        return false;
+        return current($res);
     }
 
     /**
@@ -150,20 +128,24 @@ class Database
      */
     protected function update($tableName, array $set, array $where)
     {
-        $arrSet = array();
-        foreach ($set as $field => $value) {
-            $arrSet[] = $field . ' = '. $this->escape($value);
-        }
-
-        $res = $this->db->query(
-            "UPDATE $tableName SET ".implode(',', $arrSet)."
-            WHERE ".key($where). ' = '. $this->escape(current($where));
+        $arrSet = array_map(
+            function($value) {
+                return $value . '=:' . $value;
+            },
+            array_keys($set)
         );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
-        }
 
-        return $this->db->affected_rows;
+        $stmt = $this->pdo->prepare(
+            "UPDATE $tableName SET ". implode(',', $arrSet)."
+            WHERE ". key($where). ' = :'. key($where) . 'FieldToUpdate'
+        );
+        foreach ($set as $field => $value) {
+            $this->pdo->bindValue(':'.$field, $value);
+        }
+        $this->pdo->bindValue(':'.key($where) . 'FieldToUpdate', current($where));
+        $stmt->execute();
+
+        return $stmt->rowCount();
     }
 
     /**
@@ -175,14 +157,10 @@ class Database
      */
     protected function delete($tableName, array $where)
     {
-        $res = $this->db->query(
-            "DELETE FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where));
-        );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
-        }
+        $stmt = $this->pdo->prepare("DELETE FROM $tableName WHERE ".key($where) . ' = ?');
+        $stmt->execute(array(current($where)));
 
-        return $this->db->affected_rows;
+        return $stmt->rowCount();
     }
 
     /**
@@ -194,14 +172,12 @@ class Database
      */
     protected function insert($tableName, array $data)
     {
-        $res = $this->db->query(
+        $stmt = $this->pdo->prepare(
             "INSERT INTO $tableName (".implode(',', array_keys($data)).")
-            VALUES (".implode(',', $this->escape(array_values($data))).")"
+            VALUES (".implode(',', array_fill(0, count($data), '?')).")"
         );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
-        }
+        $stmt->execute(array_values($data));
 
-        return $this->db->affected_rows;
+        return $stmt->rowCount();
     }
 }
