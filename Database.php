@@ -75,12 +75,12 @@ class Database
     public function __call($function, array $params = array())
     {
         if (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
-            throw new \BadMethodCallException($function.' is an Invalid Method Call');
+            throw new \BadMethodCallException($function.' is an invalid method Call');
         }
 
         if ('insert' == $matches[1]) {
             if (! is_array($params[0]) || count($params[0]) < 1) {
-                throw new \InvalidArgumentException('params for insert must be an array');
+                throw new \InvalidArgumentException('insert values must be an array');
             }
 
             return $this->insert($this->camelCaseToUnderscore($matches[2]), $params[0]);
@@ -88,26 +88,26 @@ class Database
 
         list($tableName, $fieldName) = explode('By', $matches[2], 2);
         if (! isset($tableName, $fieldName)) {
-            throw new \BadMethodCallException($function.' is an Invalid Method Call');
+            throw new \BadMethodCallException($function.' is an invalid method Call');
         }
 
         if ('update' == $matches[1]) {
             if (! is_array($params[1]) || count($params[1]) < 1) {
-                throw new \InvalidArgumentException('params for update must be an array');
+                throw new \InvalidArgumentException('update fields must be an array');
             }
 
             return $this->update(
-                    $this->camelCaseToUnderscore($tableName),
-                    $params[1],
-                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
-                    );
+                $this->camelCaseToUnderscore($tableName),
+                $params[1],
+                array($this->camelCaseToUnderscore($fieldName) => $params[0])
+            );
         }
 
         //select and delete method
         return $this->{$matches[1]}(
-                $this->camelCaseToUnderscore($tableName),
-                array($this->camelCaseToUnderscore($fieldName) => $params[0])
-                );
+            $this->camelCaseToUnderscore($tableName),
+            array($this->camelCaseToUnderscore($fieldName) => $params[0])
+        );
     }
 
     /**
@@ -144,15 +144,15 @@ class Database
     protected function update($tableName, array $set, array $where)
     {
         $arrSet = array_map(
-                function($value) {
+           function($value) {
                 return $value . '=:' . $value;
-                },
-                array_keys($set)
-                );
+           },
+           array_keys($set)
+         );
 
         $stmt = $this->pdo->prepare(
-                "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
-                );
+            "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
+         );
 
         foreach ($set as $field => $value) {
             $stmt->bindValue(':'.$field, $value);
@@ -196,9 +196,9 @@ class Database
     protected function insert($tableName, array $data)
     {
         $stmt = $this->pdo->prepare(
-                "INSERT INTO $tableName (".implode(',', array_keys($data)).")
-                VALUES (".implode(',', array_fill(0, count($data), '?')).")"
-                );
+            "INSERT INTO $tableName (".implode(',', array_keys($data)).")
+            VALUES (".implode(',', array_fill(0, count($data), '?')).")"
+        );
         try {
             $stmt->execute(array_values($data));
 
