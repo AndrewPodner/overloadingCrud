@@ -109,13 +109,17 @@ class Database
     protected function get($tableName, array $where)
     {
         $stmt = $this->pdo->prepare("SELECT * FROM $tableName WHERE ".key($where) . ' = ?');
-        $stmt->execute(array_values($where));
-        $res = $stmt->fetchAll();
-        if (! $res || count($res) != 1) {
-            return $res;
-        }
+        try {
+            $stmt->execute([current($where)]);
+            $res = $stmt->fetchAll();
+            if (! $res || count($res) != 1) {
+                return $res;
+            }
 
-        return current($res);
+            return current($res);
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
+        }
     }
 
     /**
@@ -143,9 +147,13 @@ class Database
             $this->pdo->bindValue(':'.$field, $value);
         }
         $this->pdo->bindValue(':'.key($where) . 'FieldToUpdate', current($where));
-        $stmt->execute();
+        try {
+            $stmt->execute();
 
-        return $stmt->rowCount();
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
+        }
     }
 
     /**
@@ -158,9 +166,13 @@ class Database
     protected function delete($tableName, array $where)
     {
         $stmt = $this->pdo->prepare("DELETE FROM $tableName WHERE ".key($where) . ' = ?');
-        $stmt->execute(array(current($where)));
+        try {
+            $stmt->execute(array(current($where)));
 
-        return $stmt->rowCount();
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
+        }
     }
 
     /**
@@ -173,11 +185,15 @@ class Database
     protected function insert($tableName, array $data)
     {
         $stmt = $this->pdo->prepare(
-            "INSERT INTO $tableName (".implode(',', array_keys($data)).")
-            VALUES (".implode(',', array_fill(0, count($data), '?')).")"
-        );
-        $stmt->execute(array_values($data));
+                "INSERT INTO $tableName (".implode(',', array_keys($data)).")
+                VALUES (".implode(',', array_fill(0, count($data), '?')).")"
+                );
+        try {
+            $stmt->execute(array_values($data));
 
-        return $stmt->rowCount();
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
+        }
     }
 }
