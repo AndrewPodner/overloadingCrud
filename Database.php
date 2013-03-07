@@ -26,6 +26,7 @@ class Database
     public function __construct(\PDO $pdo)
     {
         $this->pdo = $pdo;
+		$this->pdo->setAttrirbute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**
@@ -121,7 +122,7 @@ class Database
     {
         $stmt = $this->pdo->prepare("SELECT * FROM $tableName WHERE ".key($where) . ' = ?');
         try {
-            $stmt->execute([current($where)]);
+            $stmt->execute(array(current($where)));
             $res = $stmt->fetchAll();
             if (! $res || count($res) != 1) {
                 return $res;
