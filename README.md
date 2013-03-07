@@ -33,7 +33,7 @@ $arrayInsert = array(
 	'email' => 'joe@example.com'
 );
 
-$db = new Database();
+$db = new Database($pdoInstance);
 $result = $db->insertCustomers($arrInsert);
 
 // Returns Number of Rows Inserted
@@ -44,7 +44,7 @@ The format of the method name to retrieve a record is `getTableNameByFieldName($
 
 ### Examples
 ```
-$db = new Database();
+$db = new Database($pdoInstance);
 $result = $db->getCustomersById(5);
 
 /* 
@@ -81,7 +81,7 @@ $arrSet = array(
     'account_type' => 'annual'
 );
 
-$db = new Database();
+$db = new Database($pdoInstance);
 $result = $db->updateCustomersById(5, $arrSet);
 
 // returns 1 (number of records affected)
@@ -93,12 +93,9 @@ Works like retrieve and update.  The method name format is `deleteTableNameByFie
 ###Example
 
 ```
-$db = new Database();
+$db = new Database($pdoInstance);
 $result = $db->deleteCustomersById(5);
 
 // returns 1 (number of affected rows)
 
 ```
-
-## Change Log
-* 3/6/13 [nyamsprod] : Make the code more robust, adding dependency injection & sql injection prevention

@@ -8,59 +8,56 @@
  * @copyright  2013
  * @license    MIT <http://opensource.org/licenses/MIT>
  */
- 
+
+namespace Crud;
+
 class Database
 {
 
     /**
      * database connection object
-     * @var \mysqli
+     * @var \PDO
      */
-    protected $db;
+    protected $pdo;
 
     /**
      * Connect to the database
      */
-    public function __construct(Mysqli $dbh)
+    public function __construct(\PDO $pdo)
     {
-        $this->db = $dbh;
+        $this->pdo = $pdo;
+        $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**
-     * Return the \mysqli connection
+     * Return the pdo connection
      */
-    public function getMysqli()
+    public function getPdo()
     {
-        return $this->db;
+        return $this->pdo;
     }
 
-    /**
-     * Enable variable escaping according to Mysqli
-     * 
-     * @param mixed $str string|array to be mysqli escaped
-     * @return string|array 
-     */
-    protected function escape($str)
-    {
-        if (is_array($str)) {
-            return array_map(array($this, 'escape'), $str);
-        } elseif (is_string($str)) {
-            return "'". $this->db->real_escape_string($str). "'";
-        } else {
-            return $this->db->real_escape_string($str);
-        }
-    }
-    
     /**
      * Changes a camelCase table or field name to lowercase,
      * underscore spaced name
      *
-     * @param string $string camelCase string
+     * @param  string $string camelCase string
      * @return string underscore_space string
      */
     protected function camelCaseToUnderscore($string)
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $string));
+    }
+
+    /**
+     * Returns the ID of the last inserted row or sequence value
+     *
+     * @param  string $param Name of the sequence object from which the ID should be returned.
+     * @return string representing the row ID of the last row that was inserted into the database.
+     */
+    public function lastInsertId($param = null)
+    {
+        return $this->pdo->lastInsertId($param);
     }
 
     /**
@@ -72,154 +69,143 @@ class Database
      * Update: updateTableNameByFieldName($value, $arrUpdate)
      * Delete: deleteTableNameByFieldName($value)
      *
-     * @param string $function
-     * @param array $arrParams
+     * @param  string     $function
+     * @param  array      $arrParams
      * @return array|bool
      */
     public function __call($function, array $params = array())
     {
-
-        $action = substr($function, 0, 3);
-        switch ($action) {
-            // Record Retrieval
-            case 'get':
-                list($tableName, $fieldName) = explode('By', preg_replace('/^get/', '', $function), 2);
-                if (! isset($tableName, $fieldName)) {
-                    throw new BadMethodCallException($function.' is an Invalid Method Call');
-                }
-                return $this->get(
-                    $this->camelCaseToUnderscore($tableName), 
-                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
-                );
-                break;
-
-            // Update
-            case 'upd':
-                list($tableName, $fieldName) = explode('By', preg_replace('/^update/', '', $function), 2);
-                if (! isset($tableName, $fieldName)) {
-                    throw new BadMethodCallException($function.' is an Invalid Method Call');
-                }
-                return $this->update(
-                    $this->camelCaseToUnderscore($tableName), 
-                    $params[1], 
-                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
-                );
-                break;
-
-            // Delete
-            case 'del':
-                list($tableName, $fieldName) = explode('By', preg_replace('/^delete/', '', $function), 2);
-                if (! isset($tableName, $fieldName)) {
-                    throw new BadMethodCallException($function.' is an Invalid Method Call');
-                }
-                return $this->delete(
-                     $this->camelCaseToUnderscore($tableName), 
-                     array($this->camelCaseToUnderscore($fieldName) => $params[0])
-               );
-               break;
-
-            // Insert
-            case 'ins':
-                return $this->insert(
-                    $this->camelCaseToUnderscore(preg_replace('/^insert/', '', $function)), 
-                    $params[0]
-                );
-                break;
-            
-            // Unknown Method
-            default:
-               throw new BadMethodCallException($function.' is an Invalid Method Call');
-               break;
+        if (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
+            throw new \BadMethodCallException($function.' is an invalid method Call');
         }
+
+        if ('insert' == $matches[1]) {
+            if (! is_array($params[0]) || count($params[0]) < 1) {
+                throw new \InvalidArgumentException('insert values must be an array');
+            }
+
+            return $this->insert($this->camelCaseToUnderscore($matches[2]), $params[0]);
+        }
+
+        list($tableName, $fieldName) = explode('By', $matches[2], 2);
+        if (! isset($tableName, $fieldName)) {
+            throw new \BadMethodCallException($function.' is an invalid method Call');
+        }
+
+        if ('update' == $matches[1]) {
+            if (! is_array($params[1]) || count($params[1]) < 1) {
+                throw new \InvalidArgumentException('update fields must be an array');
+            }
+
+            return $this->update(
+                $this->camelCaseToUnderscore($tableName),
+                $params[1],
+                array($this->camelCaseToUnderscore($fieldName) => $params[0])
+            );
+        }
+
+        //select and delete method
+        return $this->{$matches[1]}(
+            $this->camelCaseToUnderscore($tableName),
+            array($this->camelCaseToUnderscore($fieldName) => $params[0])
+        );
     }
 
     /**
      * Record retrieval method
      *
-     * @param string $tableName name of the table
-     * @param array $where (key is field name)
+     * @param  string     $tableName name of the table
+     * @param  array      $where     (key is field name)
      * @return array|bool (associative array for single records, multidim array for multiple records)
      */
     protected function get($tableName, array $where)
     {
-        $res = $this->db->query(
-            "SELECT * FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where))
-        );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
-        }
-        if ($res->num_rows == 1) {
-            return $res->fetch_assoc();
-        } elseif ($res->num_rows > 1) {
-            $output = array();
-            while ($row = $res->fetch_assoc()) {
-                $output[] = $row;
+        $stmt = $this->pdo->prepare("SELECT * FROM $tableName WHERE ".key($where) . ' = ?');
+        try {
+            $stmt->execute(array(current($where)));
+            $res = $stmt->fetchAll();
+            if (! $res || count($res) != 1) {
+                return $res;
             }
-            return $output;
+
+            return current($res);
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
         }
-        return false;
     }
 
     /**
      * Update Method
      *
-     * @param string $tableName
-     * @param array $set (associative where key is field name)
-     * @param array $where (associative where key is field name)
-     * @return int number of affected rows
+     * @param  string $tableName
+     * @param  array  $set       (associative where key is field name)
+     * @param  array  $where     (associative where key is field name)
+     * @return int    number of affected rows
      */
     protected function update($tableName, array $set, array $where)
     {
-        $arrSet = array();
+        $arrSet = array_map(
+           function($value) {
+                return $value . '=:' . $value;
+           },
+           array_keys($set)
+         );
+
+        $stmt = $this->pdo->prepare(
+            "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
+         );
+
         foreach ($set as $field => $value) {
-            $arrSet[] = $field . ' = '. $this->escape($value);
+            $stmt->bindValue(':'.$field, $value);
         }
+        $stmt->bindValue(':'.key($where) . 'Field', current($where));
+        try {
+            $stmt->execute();
 
-        $res = $this->db->query(
-            "UPDATE $tableName SET ".implode(',', $arrSet)." 
-            WHERE ".key($where). ' = '. $this->escape(current($where))
-        );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
         }
-        return $this->db->affected_rows;
     }
-
 
     /**
      * Delete Method
      *
-     * @param string $tableName
-     * @param array $where (associative where key is field name)
-     * @return int number of affected rows
+     * @param  string $tableName
+     * @param  array  $where     (associative where key is field name)
+     * @return int    number of affected rows
      */
     protected function delete($tableName, array $where)
     {
-        $res = $this->db->query(
-            "DELETE FROM $tableName WHERE ".key($where).' = '.$this->escape(current($where))
-        );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        $stmt = $this->pdo->prepare("DELETE FROM $tableName WHERE ".key($where) . ' = ?');
+        try {
+            $stmt->execute(array(current($where)));
+
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
         }
-        return $this->db->affected_rows;
     }
 
     /**
      * Insert Method
      *
-     * @param string $tableName
-     * @param array $arrData (data to insert, associative where key is field name)
-     * @return int number of affected rows
+     * @param  string $tableName
+     * @param  array  $arrData   (data to insert, associative where key is field name)
+     * @return int    number of affected rows
      */
     protected function insert($tableName, array $data)
     {
-        $res = $this->db->query(
+        $stmt = $this->pdo->prepare(
             "INSERT INTO $tableName (".implode(',', array_keys($data)).")
-            VALUES (".implode(',', $this->escape(array_values($data))).")"
+            VALUES (".implode(',', array_fill(0, count($data), '?')).")"
         );
-        if (! $res) {
-          throw new RunTimeException("Error Code [".$this->db->errno."] : ". $this->db->error);
+        try {
+            $stmt->execute(array_values($data));
+
+            return $stmt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \RuntimeException("[".$e->getCode()."] : ". $e->getMessage());
         }
-        return $this->db->affected_rows;
     }
 }
