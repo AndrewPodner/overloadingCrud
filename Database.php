@@ -63,7 +63,9 @@ class Database
      */
     public function __call($function, array $params = array())
     {
-        if (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
+        if ('lastInsertId' === $function) {
+            return $this->pdo->lastInsertId();
+        } elseif (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
             throw new \BadMethodCallException($function.' is an Invalid Method Call');
         }
 
@@ -87,8 +89,8 @@ class Database
 
             return $this->update(
                 $this->camelCaseToUnderscore($tableName),
-                array($this->camelCaseToUnderscore($fieldName) => $params[0]),
-                $params[1]
+                $params[1],
+                array($this->camelCaseToUnderscore($fieldName) => $params[0])
             );
         }
 
@@ -140,13 +142,13 @@ class Database
         );
 
         $stmt = $this->pdo->prepare(
-            "UPDATE $tableName SET ". implode(',', $arrSet)."
-            WHERE ". key($where). ' = :'. key($where) . 'FieldToUpdate'
+            "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
         );
+
         foreach ($set as $field => $value) {
-            $this->pdo->bindValue(':'.$field, $value);
+            $stmt->bindValue(':'.$field, $value);
         }
-        $this->pdo->bindValue(':'.key($where) . 'FieldToUpdate', current($where));
+        $stmt->bindValue(':'.key($where) . 'Field', current($where));
         try {
             $stmt->execute();
 
