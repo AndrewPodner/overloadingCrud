@@ -49,6 +49,17 @@ class Database
     }
 
     /**
+     * Returns the ID of the last inserted row or sequence value
+     *
+     * @param  string $param Name of the sequence object from which the ID should be returned.
+     * @return string representing the row ID of the last row that was inserted into the database.
+     */
+    public function lastInsertId($param = null)
+    {
+        return $this->pdo->lastInsertId($param);
+    }
+
+    /**
      * handler for dynamic CRUD methods
      *
      * Format for dynamic methods names -
@@ -63,13 +74,7 @@ class Database
      */
     public function __call($function, array $params = array())
     {
-        if ('lastInsertId' === $function) {
-            if (! isset($params[0) || !is_string($params[0])) {
-                $params[0] = null;
-            }
-
-            return $this->pdo->lastInsertId($params[0]);
-        } elseif (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
+        if (! preg_match('/^(get|update|insert|delete)(.*)$/', $function, $matches)) {
             throw new \BadMethodCallException($function.' is an Invalid Method Call');
         }
 
@@ -92,17 +97,17 @@ class Database
             }
 
             return $this->update(
-                $this->camelCaseToUnderscore($tableName),
-                $params[1],
-                array($this->camelCaseToUnderscore($fieldName) => $params[0])
-            );
+                    $this->camelCaseToUnderscore($tableName),
+                    $params[1],
+                    array($this->camelCaseToUnderscore($fieldName) => $params[0])
+                    );
         }
 
         //select and delete method
         return $this->{$matches[1]}(
-            $this->camelCaseToUnderscore($tableName),
-            array($this->camelCaseToUnderscore($fieldName) => $params[0])
-        );
+                $this->camelCaseToUnderscore($tableName),
+                array($this->camelCaseToUnderscore($fieldName) => $params[0])
+                );
     }
 
     /**
@@ -139,15 +144,15 @@ class Database
     protected function update($tableName, array $set, array $where)
     {
         $arrSet = array_map(
-            function($value) {
+                function($value) {
                 return $value . '=:' . $value;
-            },
-            array_keys($set)
-        );
+                },
+                array_keys($set)
+                );
 
         $stmt = $this->pdo->prepare(
-            "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
-        );
+                "UPDATE $tableName SET ". implode(',', $arrSet).' WHERE '. key($where). '=:'. key($where) . 'Field'
+                );
 
         foreach ($set as $field => $value) {
             $stmt->bindValue(':'.$field, $value);
