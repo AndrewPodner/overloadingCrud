@@ -26,7 +26,7 @@ class Database
     public function __construct(\PDO $pdo)
     {
         $this->pdo = $pdo;
-        $this->pdo->setAttrirbute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**
